@@ -1,0 +1,376 @@
+/* ==========================================================================
+   相册地图 · 天地图实验线 · 附加样式
+   --------------------------------------------------------------------------
+   这个文件只做三件事：
+     1. 放行画布（自绘线的画布只在 data-engine='lite' 下显示，本线用自己的标识）
+     2. 定义「栅格底图调色」—— 这是我们唯一能改底图观感的手段，见下方长注释
+     3. 补齐本线独有的两个控件：密钥面板、天地图署名
+   其余一切（顶栏 / 配色 / 缩放条 / 图例 / 点位 / 面板 / 加载）沿用**同目录**的
+   photo-map.css（自包含之后它是副本，不再与自绘线自动同步），本文件不做任何覆写。
+   ========================================================================== */
+
+/* ---------------------------------------------------------------- 画布放行 */
+.app[data-engine='tdt'] .stage__canvas {
+  display: block;
+  /* 海域底色必须交给 .stage 承担，画布自己必须是透明的。
+     原因：filter 作用于元素的**整个渲染结果，包括它自己的 CSS 背景**。
+     实测把 --m-ocean(#070b12) 留在画布上，经 invert+grayscale+brightness
+     之后变成了 rgb(111,109,106) —— 一片中灰，跟主题色完全脱节。
+     挪到不参与滤镜的 .stage 上，底色就回到 #070b12。 */
+  background: transparent;
+}
+
+.app[data-engine='tdt'] .stage {
+  background: var(--m-ocean);
+}
+
+/* ------------------------------------------------------------ 底图调色层
+
+   为什么需要这一层：天地图的 WMTS 给的是**已经渲染好的 PNG**，
+   图层级的显隐与配色在建图时就被烘焙进像素了，客户端改不了。
+   所以「把彩色政务风压成截图那种清透单色」这件事，只能在**合成阶段**
+   做 —— 用 CSS filter 做色相/明度重映射，再用一层色罩补色调。
+
+   这不是图层级样式控制，做不到「只留省界、去掉道路」。
+   真正能逐图层开关的是腾讯/高德的自定义样式；天地图没有。
+
+   代价与边界：
+     · 滤镜作用在整张画布上，标注层是独立的 DOM 层，不受影响（字号与配色照旧恒定）
+     · 数值经过挑选，目标顺序是「海陆可辨 > 细节安静 > 与主线主题色同调」
+     · 想改观感，只动下面这 10 行变量，别动别的
+
+   变量含义：
+     --tdt-filter      画布滤镜链，从左到右依次应用
+     --tdt-veil        色罩颜色
+     --tdt-veil-blend  色罩混合模式
+   -------------------------------------------------------------------------- */
+
+.stage__veil {
+  position: absolute;
+  z-index: 2; /* 与画布同层，靠 DOM 顺序压在其上；网格是 3、标注是 10 */
+  inset: 0;
+  pointer-events: none;
+  background: var(--tdt-veil, transparent);
+  mix-blend-mode: var(--tdt-veil-blend, normal);
+  transition: background 220ms ease;
+}
+
+.app[data-engine='tdt'] .stage__canvas {
+  filter: var(--tdt-filter, none);
+}
+
+/* 夜幕：深蓝黑底 + 琥珀色温。反相把「浅底深线」翻成「深底浅线」，
+   brightness 压到 0.42 让陆地落在近黑、海洋略亮一档 —— 海陆关系反过来
+   读着反而更像本来的深色主题。 */
+.app[data-theme='night'] {
+  --tdt-filter: grayscale(1) invert(1) brightness(0.42) contrast(0.96);
+  --tdt-veil: rgba(233, 176, 74, 0.05);
+  --tdt-veil-blend: screen;
+}
+
+/* 墨：纯中性灰黑，去色到底。 */
+.app[data-theme='ink'] {
+  --tdt-filter: grayscale(1) invert(1) brightness(0.34) contrast(1);
+  --tdt-veil: rgba(255, 255, 255, 0.03);
+  --tdt-veil-blend: screen;
+}
+
+/* 深海：sepia + hue-rotate 是纯灰图上唯一可靠的染色手段
+   （直接 saturate 对无彩色没有作用，色彩要先被 sepia 造出来）。 */
+.app[data-theme='abyss'] {
+  --tdt-filter: grayscale(1) invert(1) brightness(0.40) sepia(1) hue-rotate(140deg) saturate(2.4);
+  --tdt-veil: rgba(190, 242, 109, 0.05);
+  --tdt-veil-blend: screen;
+}
+
+/* 陶土：暖褐。hue-rotate 取负值把 sepia 的棕往橙红推。 */
+.app[data-theme='clay'] {
+  --tdt-filter: grayscale(1) invert(1) brightness(0.36) sepia(1) hue-rotate(-22deg) saturate(1.9);
+  --tdt-veil: rgba(242, 200, 116, 0.05);
+  --tdt-veil-blend: screen;
+}
+
+/* 纸白：唯一不反相的一档。天地图本身就是浅底，
+   只要降饱和 + 提亮，就能接近截图那种「白陆地 + 淡蓝海域」。 */
+.app[data-theme='paper'] {
+  --tdt-filter: saturate(0.42) brightness(1.12) contrast(0.94);
+  --tdt-veil: rgba(255, 255, 255, 0.16);
+  --tdt-veil-blend: normal;
+}
+
+/* ------------------------------------------------------------ 天地图署名 */
+/* 服务条款要求显著标注来源且不得遮挡。做成不可选中的角标，
+   永远压在最上层，任何交互都碰不到它。 */
+.tdt-attr {
+  position: absolute;
+  z-index: 40;
+  right: 10px;
+  bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  color: var(--text-tertiary);
+  background: var(--surface);
+  font-size: 10.5px;
+  line-height: 1.4;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  pointer-events: none;
+  user-select: none;
+}
+
+.tdt-attr__sep {
+  opacity: 0.5;
+}
+
+/* 注记层开关的激活态。注记层默认关闭 —— 见 tdt-map.js 顶部的说明。 */
+.pill-btn[aria-pressed='true'] {
+  color: var(--text-primary);
+  background: var(--surface-hover);
+}
+
+.pill-btn[aria-pressed='true'] .pill-btn__dot {
+  background: var(--m-accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--m-accent) 22%, transparent);
+}
+
+/* -------------------------------------------------------------- 密钥面板 */
+.keybox {
+  position: absolute;
+  z-index: 60;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: var(--scrim);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 180ms ease, visibility 0s linear 180ms;
+}
+
+.keybox.is-open {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 180ms ease, visibility 0s linear;
+}
+
+.keybox__card {
+  width: min(440px, 100%);
+  padding: 22px 22px 18px;
+  border-radius: 18px;
+  background: var(--surface-solid);
+  box-shadow: var(--shadow-md), 0 0 0 1px var(--line);
+}
+
+.keybox__title {
+  margin: 0 0 8px;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.keybox__hint {
+  margin: 0 0 14px;
+  color: var(--text-tertiary);
+  font-size: 12px;
+  line-height: 1.65;
+}
+
+.keybox__hint b {
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.keybox__input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  color: var(--text-primary);
+  background: transparent;
+  font-family: 'SF Mono', 'JetBrains Mono', ui-monospace, Consolas, 'PingFang SC', 'Microsoft YaHei', monospace;
+  font-size: 12.5px;
+  letter-spacing: 0.04em;
+  outline: none;
+  transition: border-color 140ms ease;
+}
+
+.keybox__input:focus {
+  border-color: var(--m-accent);
+}
+
+.keybox__input::placeholder {
+  color: var(--text-tertiary);
+  letter-spacing: 0;
+}
+
+.keybox__row {
+  margin-top: 10px;
+}
+
+.keybox__check {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--text-tertiary);
+  font-size: 12px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.keybox__check input {
+  accent-color: var(--m-accent);
+}
+
+.keybox__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.keybox__btn {
+  padding: 8px 16px;
+  border-radius: 9px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  transition: background 140ms ease, color 140ms ease;
+}
+
+.keybox__btn:hover {
+  color: var(--text-primary);
+  background: var(--surface-hover);
+}
+
+.keybox__btn--primary {
+  color: var(--m-accent-ink);
+  background: var(--m-accent);
+}
+
+.keybox__btn--primary:hover {
+  color: var(--m-accent-ink);
+  background: var(--m-accent);
+  filter: brightness(1.08);
+}
+
+/* 没有密钥时的常驻提示条，压在顶栏之下 */
+.nokey {
+  position: absolute;
+  z-index: 29;
+  top: 62px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 7px 14px;
+  border-radius: 999px;
+  color: var(--text-secondary);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+  font-size: 12px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* ---------------------------------------------------------- 密度填色层 */
+/* 独立画布的第二个理由也在这里：这层不能参与 --tdt-filter。
+   它压在调色层之上、底纹网格之下 —— 所以底纹仍然铺在密度色之上，
+   与「底纹铺在底图之上」保持同一层级关系。 */
+.stage__fill {
+  position: absolute;
+  z-index: 3;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  pointer-events: none;
+}
+
+/* ------------------------------------------------------- 填色的 hover 气泡 */
+/* 位置由 JS 写 transform（translate3d），所以这里不设 left/top ——
+   让动画/位移只走合成层，不触发布局。 */
+.fill-tip {
+  position: absolute;
+  z-index: 30;
+  left: 0;
+  top: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 9px;
+  border-radius: 8px;
+  color: var(--text-primary);
+  background: var(--surface-solid);
+  box-shadow: var(--shadow-sm), 0 0 0 1px var(--line);
+  font-size: 11.5px;
+  line-height: 1.4;
+  white-space: nowrap;
+  pointer-events: none;
+  user-select: none;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.fill-tip.is-on {
+  opacity: 1;
+}
+
+.fill-tip__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  flex: none;
+}
+
+.fill-tip__name {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.fill-tip__n {
+  color: var(--text-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fill-tip {
+    transition: none;
+  }
+}
+
+/* ------------------------------------------------------------ 导入面板 */
+/* 复用密钥面板那套 .keybox 样式，只补两处本面板独有的排版。 */
+.improw {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.improw .keybox__btn {
+  padding: 9px 14px;
+  background: var(--surface-hover);
+}
+
+.improw .keybox__btn--primary {
+  color: var(--m-accent-ink);
+  background: var(--m-accent);
+}
+
+.imphint {
+  margin: 12px 0 0;
+  padding: 9px 11px;
+  border-radius: 9px;
+  color: var(--text-secondary);
+  background: var(--surface-hover);
+  font-size: 11.5px;
+  line-height: 1.6;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stage__veil,
+  .keybox,
+  .keybox.is-open {
+    transition: none;
+  }
+}

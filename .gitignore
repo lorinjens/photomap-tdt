@@ -1,0 +1,23 @@
+# ---- 边界数据不入库（tools/fetch-geo.js 本地生成；jiuduanxian.js 除外）----
+assets/geo/province.js
+assets/geo/world.js
+assets/geo/city/
+assets/geo/county/
+assets/geo/.tdt-menu.json
+
+# ---- 探针产物（可由 tools/*.js 重新生成）----
+probe-*.json
+probe-*.txt
+tools/probe-*.json
+tools/probe-*.txt
+tools/_*
+
+# ---- 系统与编辑器杂物 ----
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# ---- Python ----
+__pycache__/
+*.pyc

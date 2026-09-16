@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+
+    <!-- 不外泄来源：相册是个人内容，链接不该把访问路径带到第三方站点去 -->
+    <meta name="referrer" content="no-referrer" />
+
+    <title>PhotoMap — 相册地图（天地图免费底图）</title>
+
+    <!-- 本目录已自包含：这份 photo-map.css 是从父级拷来的**副本**。
+         原先两条线共用同一份，用来保证面板逐像素同款；自绘线隔离之后
+         不再自动同步，那个约束随之解除，本线可以自行演化。
+         唯一的交换是：父级改样式不会再流到这里，改动要各自落地。 -->
+    <link rel="stylesheet" href="photo-map.css" />
+    <link rel="stylesheet" href="tdt-extra.css" />
+  </head>
+
+  <body>
+    <div class="app" id="app" data-theme="paper" data-engine="tdt">
+      <div class="stage" id="stage">
+        <!-- 覆盖层顺序（自下而上）：瓦片画布 → 调色层 → 密度填色 → 底纹网格 → 标注层。
+             填色层单列一张画布：底图那张挂着 CSS filter，画进去的色阶会被洗成灰白。 -->
+        <canvas class="stage__canvas" id="cv"></canvas>
+        <div class="stage__veil" id="veil" aria-hidden="true"></div>
+        <canvas class="stage__fill" id="fill" aria-hidden="true"></canvas>
+        <div class="stage__grid" aria-hidden="true"></div>
+
+        <div class="stage__overlay" id="overlay"></div>
+
+        <!-- 天地图署名与审图号：服务条款要求显著标注，且不得遮挡。
+             审图号以天地图官网当期公布为准，这里不写死。 -->
+        <div class="tdt-attr" id="attr">
+          <span>© 天地图</span>
+          <span class="tdt-attr__sep">·</span>
+          <span id="attrScale">—</span>
+        </div>
+
+        <!-- 填色层的 hover 气泡：跟着光标走，显示「区域名 · N 张照片」。
+             放在 .stage 里是为了坐标系与 pointermove 的 localPt 一致（同一个 rect），
+             省掉一次 getBoundingClientRect 的布局读取。 -->
+        <div class="fill-tip" id="fillTip" aria-hidden="true"></div>
+      </div>
+
+      <header class="topbar">
+        <div class="brand">
+          <span class="brand__dot"></span>
+          <span class="brand__title" id="brandTitle">2024 旅行精选</span>
+          <span class="brand__meta" id="brandMeta">天地图底图</span>
+        </div>
+
+        <span class="topbar__spacer"></span>
+
+        <button class="pill-btn" id="btnHome" type="button" aria-label="回到全国">
+          <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+            <path
+              d="M2 6V2h4M14 10v4h-4M10 2h4v4M6 14H2v-4"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.6"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+          全国
+        </button>
+
+        <button class="pill-btn" id="btnWorld" type="button" aria-label="查看世界地图">
+          <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+            <circle cx="8" cy="8" r="6.1" fill="none" stroke="currentColor" stroke-width="1.5" />
+            <ellipse cx="8" cy="8" rx="2.7" ry="6.1" fill="none" stroke="currentColor" stroke-width="1.5" />
+            <path d="M2.2 6.1h11.6M2.2 9.9h11.6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+          </svg>
+          世界
+        </button>
+
+        <button class="pill-btn" id="btnNote" type="button" aria-pressed="false" aria-label="叠加天地图注记层">
+          <span class="pill-btn__dot" id="noteDot"></span>
+          注记
+        </button>
+
+        <button class="pill-btn" id="btnPhoto" type="button" aria-label="用本地照片看效果">
+          <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+            <rect x="2" y="3.2" width="12" height="9.6" rx="1.8" fill="none" stroke="currentColor" stroke-width="1.5" />
+            <circle cx="5.9" cy="6.7" r="1.15" fill="none" stroke="currentColor" stroke-width="1.3" />
+            <path d="M2.4 11.2 6 8.1l2.6 2.3 2.2-1.9 2.8 2.6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" />
+          </svg>
+          照片
+        </button>
+
+        <button class="pill-btn" id="btnKey" type="button" aria-label="设置天地图密钥">
+          <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+            <circle cx="5.6" cy="10.4" r="2.9" fill="none" stroke="currentColor" stroke-width="1.5" />
+            <path d="M7.9 8.1 13 3M11 5l1.6 1.6M9.4 6.6 11 8.2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+          </svg>
+          密钥
+        </button>
+
+        <button class="pill-btn" id="btnTheme" type="button" aria-label="切换地图配色" aria-expanded="false">
+          <span class="pill-btn__dot"></span>
+          配色
+        </button>
+      </header>
+
+      <div class="themes" id="themes" role="group" aria-label="地图配色"></div>
+
+      <div class="zoombar">
+        <button id="btnIn" type="button" aria-label="放大">
+          <svg viewBox="0 0 16 16" aria-hidden="true">
+            <path d="M8 3v10M3 8h10" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" />
+          </svg>
+        </button>
+        <span class="zoombar__scale" id="scaleTag">—</span>
+        <button id="btnOut" type="button" aria-label="缩小">
+          <svg viewBox="0 0 16 16" aria-hidden="true">
+            <path d="M3 8h10" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" />
+          </svg>
+        </button>
+      </div>
+
+      <div class="legend" aria-hidden="true">
+        <span class="legend__label">照片少</span>
+        <span class="legend__ramp"><i></i><i></i><i></i><i></i><i></i></span>
+        <span class="legend__label">多</span>
+      </div>
+
+      <aside class="panel" id="panel" aria-live="polite" aria-hidden="true" aria-label="地点照片"></aside>
+
+      <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+      <!-- 密钥设置：网页版记在本机 localStorage（可在框里取消勾选，`?nostore` 可整体停用）；
+           被客户端嵌着跑时一律不落盘，由客户端写 <userData>/config.json。
+           两种情况都不外发、不上传。 -->
+      <div class="keybox" id="keybox" aria-hidden="true">
+        <div class="keybox__card" role="dialog" aria-modal="true" aria-label="天地图密钥">
+          <h2 class="keybox__title">天地图密钥</h2>
+          <p class="keybox__hint">
+            在 <b>console.tianditu.gov.cn</b> 注册后「应用管理」里创建，选<b>浏览器端</b>，把当前域名填进白名单。
+            粘贴到这里即可 —— 密钥只记在<b>本机浏览器</b>里，刷新与下次打开都不用再填。
+          </p>
+          <input
+            class="keybox__input"
+            id="keyInput"
+            type="text"
+            spellcheck="false"
+            autocomplete="off"
+            placeholder="粘贴 tk= 后面那串 32 位字符"
+          />
+          <div class="keybox__row">
+            <label class="keybox__check">
+              <input type="checkbox" id="keySave" checked />
+              记住密钥（刷新、下次打开都不用再填）
+            </label>
+          </div>
+          <div class="keybox__row">
+            <label class="keybox__check">
+              <input type="checkbox" id="keyRemember" />
+              地址栏也带一份（方便换浏览器打开）
+            </label>
+          </div>
+          <div class="keybox__actions">
+            <button class="keybox__btn" id="keyCancel" type="button">取消</button>
+            <button class="keybox__btn keybox__btn--primary" id="keyApply" type="button">应用</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 本地照片导入：只读文件、只在内存里解码、只留 objectURL。
+           不上传、不写磁盘。也没有任何网络请求。 -->
+      <div class="keybox" id="impbox" aria-hidden="true">
+        <div class="keybox__card" role="dialog" aria-modal="true" aria-label="用本地照片看效果">
+          <h2 class="keybox__title">用你自己的照片看效果</h2>
+          <p class="keybox__hint">
+            照片<b>在本机解码，不上传</b>；客户端里会存在本机，<b>刷新与重启都不用重选</b>
+            （点「回到演示数据」才清）。<br />
+            坐标读自照片的 <b>EXIF GPS</b>；没有定位信息的照片无法摆到图上，会被跳过并计数。<br />
+            选<b>文件夹</b>时按文件夹聚成一个点位（一次旅行 = 一个点）；
+            选<b>多张照片</b>则一张一个点。也可以直接把照片拖到页面上。
+          </p>
+          <div class="improw">
+            <button class="keybox__btn keybox__btn--primary" id="pickFolder" type="button">选文件夹</button>
+            <button class="keybox__btn" id="pickPhotos" type="button">选照片</button>
+            <button class="keybox__btn" id="impReset" type="button">回到演示数据</button>
+          </div>
+          <p class="keybox__hint imphint" id="impHint">
+            还没有导入。注意：微信 / 截图 / 部分修图软件存出的图会把 GPS 抹掉。
+          </p>
+          <div class="keybox__actions">
+            <button class="keybox__btn" id="impClose" type="button">关闭</button>
+          </div>
+        </div>
+      </div>
+
+      <input type="file" id="filePhotos" accept="image/jpeg,image/jpg,image/png,image/webp" multiple hidden />
+      <input type="file" id="fileFolder" webkitdirectory directory multiple hidden />
+
+      <div class="loading is-on" id="loading">
+        <div class="loading__ring"></div>
+        <div class="loading__text" id="loadingText">正在准备底图…</div>
+        <div class="loading__hint" id="loadingHint" hidden></div>
+      </div>
+    </div>
+
+    <!-- 以下五个都在本目录内，不再往父级取任何东西。
+         照片资源同理：photo-data.js 里的 src 写作 'assets/photo-XX.png'，
+         基准是**本目录**（自绘线时代基准是父级，assetUrl() 会补 '../'）。 -->
+    <script src="photo-data.js"></script>
+    <!-- 两份矢量面（本地数据，天地图不提供）：
+         province.js（564KB）省级行政面 —— 密度填色与「落哪个省」判定；
+         world.js（1088KB）国别行政面 —— 国别填色与「落哪个国家」判定。
+         都走盘、不走网络，零配额消耗。 -->
+    <script src="assets/geo/province.js"></script>
+    <script src="assets/geo/world.js"></script>
+    <!-- 九段线（1.3KB，十段短线）。**合规要求，不能删。**
+         天地图底图自带一条，这条是密度填色层为了「把南海一并点亮」而叠加的
+         高亮 —— 数据源与省界同一份（xingzhengqu gcj02），所以同样要 GCJ→WGS。
+         体积小到可以无条件同步加载，不做懒加载。
+         市界（city/，27 个 / 1.92MB）与区县界（county/，31 个 / 8.9MB）
+         **不在**这里加载：它们按省懒加载，见 tdt-map.js 的 ensureCity / ensureCounty。 -->
+    <script src="assets/geo/jiuduanxian.js"></script>
+    <script src="photo-import.js"></script>
+    <!-- 相册存档：把「用我自己的照片看效果」记住，刷新/重启不丢。
+         必须在 tdt-map.js **之前**加载 —— boot() 一上来就要 await 它取存档。 -->
+    <script src="photo-store.js"></script>
+    <script src="tdt-map.js"></script>
+    <!-- 顶栏按钮的宽度编排：按钮永不缩放，放不下的按优先级收进「更多」菜单。 -->
+    <script src="topbar-fit.js"></script>
+  </body>
+</html>

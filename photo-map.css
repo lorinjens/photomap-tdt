@@ -1,0 +1,1304 @@
+/* ==========================================================================
+   相册地图 · photo-map.css
+   配色全部集中在 .app[data-theme] 这一层，改这里即可自定义地图颜色。
+   默认浅色（纸白）—— 与客户端外壳的浅色界面同调。另附四套深色便于对比。
+   默认值挂在 index.html 的 data-theme 上，启动时也可用 ?theme=night 覆盖
+   （见 tdt-map.js 的 readParams）。
+   ========================================================================== */
+
+.app {
+  /* ---------------- 默认：夜幕（深蓝黑 + 琥珀高亮） ---------------- */
+  --m-ocean: #070b12;            /* 地图底色（海面） */
+  --m-land: #182030;             /* 无照片陆地填充 */
+  --m-d1: #24476d;               /* 照片密度 1 档 */
+  --m-d2: #2f6796;
+  --m-d3: #3f95b8;
+  --m-d4: #6fc4d4;
+  --m-d5: #e9b04a;               /* 密度 5 档（最热） */
+  --m-prov: #4c5b79;             /* 省界描边 */
+  --m-city: #232d3f;             /* 市界描边 */
+  --m-jiu: #66779a;              /* 九段线 */
+  --m-label: #6a7a99;            /* 省名标注 */
+  --m-label-edge: rgba(4, 7, 13, 0.9); /* 省名描边（深色底上保可读） */
+
+  --m-accent: #e9b04a;
+  --m-accent-ink: #1a1206;
+  --m-pin-name: #eaf0fa;
+  --m-pin-name-bg: rgba(10, 15, 24, 0.8);
+  --m-pin-ring: rgba(255, 255, 255, 0.24);
+  --m-pin-shadow: rgba(0, 0, 0, 0.6);
+
+  /* ---------------- UI 基础变量 ---------------- */
+  --surface: rgba(19, 26, 38, 0.86);
+  --surface-solid: #151c28;
+  --surface-hover: rgba(255, 255, 255, 0.07);
+  --line: rgba(255, 255, 255, 0.1);
+  --text-primary: #eef2f8;
+  --text-secondary: #a6b2c4;
+  --text-tertiary: #6f7f99;
+  --shadow-sm: 0 1px 4px rgba(0, 0, 0, 0.45), 0 0 0 0.5px rgba(255, 255, 255, 0.07);
+  --shadow-md: 0 10px 30px rgba(0, 0, 0, 0.55);
+  /* 右侧面板的浮起投影。**必须随主题走**：面板自己的底色就是主题色，
+     固定用黑色投影会在浅色主题下糊成一道脏边（纸白主题曾经如此 ——
+     其余控件的投影早就走主题变量了，只有面板这一处是硬编码的黑）。 */
+  --panel-shadow: 0 22px 56px rgba(0, 0, 0, 0.5), 0 2px 10px rgba(0, 0, 0, 0.32);
+  --scrim: rgba(6, 9, 15, 0.66);
+  /* 头图白色渐变的「白」到底是什么颜色 —— 写成 R, G, B 三元组，好让
+     rgba(var(--hero-fade), α) 按主题调透明度。它必须等于面板底色的**不透明版**
+     （即 --surface-solid）：渐变要一路白到与面板本体完全同色，才没有接缝。
+     UI 稿量出来的是纯白 255 —— 那是纸白主题上一块不透明的卡；深色主题
+     沿用基底那一档（#151c28 = 21,28,40）。 */
+  --hero-fade: 21, 28, 40;
+}
+
+/* ---------------- 墨：中性灰黑 + 白灰高亮 ---------------- */
+.app[data-theme='ink'] {
+  --m-ocean: #0b0c0e;
+  --m-land: #17191d;
+  --m-d1: #2a2d34;
+  --m-d2: #43464f;
+  --m-d3: #6d717d;
+  --m-d4: #a4a9b6;
+  --m-d5: #f3f4f6;
+  --m-prov: #4a4d57;
+  --m-city: #23252b;
+  --m-jiu: #5c6068;
+  --m-label: #6b6f79;
+  --m-accent: #f3f4f6;
+  --m-accent-ink: #101114;
+}
+
+/* ---------------- 深海：青黑 + 荧光青 ---------------- */
+.app[data-theme='abyss'] {
+  --m-ocean: #04121a;
+  --m-land: #0c1e28;
+  --m-d1: #11323f;
+  --m-d2: #155160;
+  --m-d3: #1d7d88;
+  --m-d4: #33b0a4;
+  --m-d5: #bef26d;
+  --m-prov: #2f6470;
+  --m-city: #14303c;
+  --m-jiu: #3f7c86;
+  --m-label: #4d8b95;
+  --m-accent: #bef26d;
+  --m-accent-ink: #0b1a05;
+}
+
+/* ---------------- 陶土：暖褐黑 + 沙金 ---------------- */
+.app[data-theme='clay'] {
+  --m-ocean: #100c09;
+  --m-land: #1e1713;
+  --m-d1: #35251c;
+  --m-d2: #573827;
+  --m-d3: #895333;
+  --m-d4: #c07b3f;
+  --m-d5: #f2c874;
+  --m-prov: #6d4d36;
+  --m-city: #2b211a;
+  --m-jiu: #8a6446;
+  --m-label: #8a6a52;
+  --m-accent: #f2c874;
+  --m-accent-ink: #1d1206;
+}
+
+/* ---------------- 纸白：浅色对照（想换回亮底时选这个） ---------------- */
+.app[data-theme='paper'] {
+  --m-ocean: #eef1f6;
+  --m-land: #e6eaf1;
+  --m-d1: #dce9ff;
+  --m-d2: #bcd4fe;
+  --m-d3: #92b7fb;
+  --m-d4: #6194f7;
+  --m-d5: #2f6ee0;
+  --m-prov: #b9c2d4;
+  --m-city: #d5dbe6;
+  --m-jiu: #6b7a94;
+  --m-label: #7c8698;
+  --m-label-edge: rgba(255, 255, 255, 0.9);
+  --m-accent: #2f6ee0;
+  --m-accent-ink: #ffffff;
+  --m-pin-name: #232630;
+  --m-pin-name-bg: rgba(255, 255, 255, 0.9);
+  --m-pin-ring: rgba(23, 37, 84, 0.14);
+  --m-pin-shadow: rgba(23, 37, 84, 0.3);
+  --surface: rgba(255, 255, 255, 0.88);
+  --surface-solid: #ffffff;
+  --surface-hover: rgba(37, 38, 42, 0.05);
+  --line: #e3e7eb;
+  --text-primary: #25262a;
+  --text-secondary: #4c4d50;
+  --text-tertiary: #9a9ba5;
+  --shadow-sm: 0 1px 4px rgba(23, 37, 84, 0.12), 0 0 0 0.5px rgba(23, 37, 84, 0.06);
+  --shadow-md: 0 12px 34px rgba(23, 37, 84, 0.2);
+  /* 浅色底上的投影要「托得住、但不显形」：换成同色系的深蓝（与上面两条一致），
+     不透明度压到深色主题的三成。纯黑在纸白上会读成一道烟熏边。 */
+  --panel-shadow: 0 18px 44px rgba(23, 37, 84, 0.13), 0 2px 8px rgba(23, 37, 84, 0.07);
+  --scrim: rgba(255, 255, 255, 0.7);
+  /* 头图渐变收到纯白。UI 稿里面板底色量出来就是 rgb(255,255,255) ——
+     不透明，不是 --surface 那档 0.88 白。用 0.88 白收尾会在
+     「图 → 面板本体」的交界处留下 3 级灰的接缝。 */
+  --hero-fade: 255, 255, 255;
+}
+
+/* ------------------------------------------------- 底纹网格 */
+/* 「若隐若现」= 极低不透明度 + 径向遮罩从中心向外淡出。
+   网格压在所有地图图层之上、标注之下，铺满陆地与海面；
+   5% 量级的对比度足以撑出图纸质感，又不会干扰密度填充的读图。 */
+.app {
+  --grid-line: rgba(140, 175, 225, 0.042);
+  --grid-line-major: rgba(140, 175, 225, 0.078);
+}
+
+.app[data-theme='ink'] {
+  --grid-line: rgba(200, 205, 215, 0.038);
+  --grid-line-major: rgba(200, 205, 215, 0.07);
+}
+
+.app[data-theme='abyss'] {
+  --grid-line: rgba(120, 220, 215, 0.042);
+  --grid-line-major: rgba(120, 220, 215, 0.078);
+}
+
+.app[data-theme='clay'] {
+  --grid-line: rgba(235, 190, 130, 0.042);
+  --grid-line-major: rgba(235, 190, 130, 0.074);
+}
+
+.app[data-theme='paper'] {
+  --grid-line: rgba(30, 45, 70, 0.04);
+  --grid-line-major: rgba(30, 45, 70, 0.072);
+}
+
+/* ------------------------------------------------- 世界底图 */
+/* 他国陆地与国界。刻意比 --m-land（中国无照片陆地）再暗一档，
+   让「中国」这块版图在整张世界图上自己跳出来，而不是糊成一片。
+   浅色主题（paper）反过来：比海面略深一点点。 */
+.app {
+  --m-world: #101724;
+  --m-worldline: #222c3f;
+}
+
+.app[data-theme='ink'] {
+  --m-world: #12141a;
+  --m-worldline: #23262d;
+}
+
+.app[data-theme='abyss'] {
+  --m-world: #081a22;
+  --m-worldline: #12333d;
+}
+
+.app[data-theme='clay'] {
+  --m-world: #17110d;
+  --m-worldline: #2b211a;
+}
+
+.app[data-theme='paper'] {
+  --m-world: #e2e7ee;
+  --m-worldline: #ccd4e0;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  color: var(--text-primary);
+  background: #0a0e16;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+button {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  color: inherit;
+  background: none;
+  font: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ---------------------------------------------------------------- 布局 */
+.app {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--m-ocean);
+  color: var(--text-primary);
+  /* 右侧面板占用的宽度：0 = 收起。
+     顶栏、配色面板、缩放控件都按它避让，面板自身也用它作为宽度。
+     注意这个变量必须真的存在 —— 一旦未定义，下面所有
+     calc(16px + var(--panel-w)) 都会在计算值阶段整条失效，
+     控件会直接跑到左上角。 */
+  --panel-w: 0px;
+  /* 面板四周离屏幕边缘的距离。面板是浮在地图上的卡片（不是贴边的侧栏），
+     这 12px 就是「悬浮」和「嵌进去」的全部区别：
+     上右下三边留白 + 圆角 + 四周投影 = 读者一眼看出它压在地图上。
+     关闭时的位移也必须算上它，否则会有一条约 12px 的边留在屏幕里。 */
+  --panel-gap: 12px;
+}
+
+.app.is-panel {
+  --panel-w: 348px;
+}
+
+.stage {
+  position: absolute;
+  inset: 0;
+  /* 自绘引擎下由 JS 接管滚轮/拖拽手势 */
+  touch-action: none;
+}
+
+.stage__map,
+.stage__canvas {
+  position: absolute;
+  inset: 0;
+  background: var(--m-ocean);
+}
+
+.stage__canvas {
+  z-index: 2;
+  width: 100%;
+  height: 100%;
+  display: none;
+}
+
+/* 使用自绘引擎时隐藏 TMap 容器 */
+.app[data-engine='lite'] .stage__map {
+  display: none;
+}
+
+.app[data-engine='lite'] .stage__canvas {
+  display: block;
+}
+
+/* 底纹网格：细格 26px + 粗格 130px 双层，
+   径向遮罩让它在画面中心最实、向四周自然消失，不会像贴上去的贴纸。
+   放在 canvas 之上、标注之下，所以两种引擎都能共用。 */
+.stage__grid {
+  position: absolute;
+  z-index: 3;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(to right, var(--grid-line) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px),
+    linear-gradient(to right, var(--grid-line-major) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--grid-line-major) 1px, transparent 1px);
+  background-size: 26px 26px, 26px 26px, 130px 130px, 130px 130px;
+  -webkit-mask-image: radial-gradient(
+    135% 105% at 50% 44%,
+    #000 8%,
+    rgba(0, 0, 0, 0.62) 58%,
+    transparent 100%
+  );
+  mask-image: radial-gradient(
+    135% 105% at 50% 44%,
+    #000 8%,
+    rgba(0, 0, 0, 0.62) 58%,
+    transparent 100%
+  );
+}
+
+/* 自绘覆盖层：区域名 + 照片缩略图点位
+   坐标由 JS 每帧用投影换算成屏幕像素写 transform，因此文字与线宽
+   永远以屏幕像素为单位，缩放时不会被放大 —— 这是整个方案的关键。 */
+.stage__overlay {
+  position: absolute;
+  z-index: 10;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/* 牵引线层：标注被挤开时用一条细线指回真实位置。
+   用强调色，和线尽头的点、点位上的张数角标是同一套语言：
+   「这个气泡 ↔ 那个点」。 */
+/* ---------------------------------------------------------------- 顶栏 */
+.topbar {
+  position: absolute;
+  z-index: 30;
+  top: 0;
+  /* 右侧面板展开时整体让位，按钮不会被面板压住。
+     与面板的滑入时长/缓动保持一致，两者之间恒隔 16px，永不重叠。 */
+  right: var(--panel-w);
+  left: 0;
+  height: 58px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 16px;
+  background: linear-gradient(to bottom, var(--scrim), transparent);
+  pointer-events: none;
+  transition: right 300ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.topbar > * {
+  pointer-events: auto;
+}
+
+/* 品牌块与按钮一样**不许被压缩**。曾经它是 flex: 0 1 auto + min-width: 0，
+   窗口一窄就被压扁：标题「2024 旅行精选」只剩「2024」，右侧按钮同时换行成
+   两行字。压扁比换行更糟 —— 换行至少看得出是拥挤，压扁看起来像是内容坏了。
+   上限 46% 是给它一个封顶：标题很长时截断，而不是把按钮挤到没有位置。 */
+.brand {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+  min-width: 0;
+  max-width: 46%;
+  height: 34px;
+  padding: 0 15px;
+  border-radius: 17px;
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  white-space: nowrap;
+}
+
+.brand__dot {
+  align-self: center;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--m-accent);
+}
+
+.brand__title {
+  align-self: center;
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.brand__meta {
+  align-self: center;
+  overflow: hidden;
+  color: var(--text-tertiary);
+  font-size: 11px;
+  line-height: 1;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-variant-numeric: tabular-nums;
+}
+
+.topbar__spacer {
+  flex: 1;
+}
+
+/* 按钮**永不缩放**：宽度由内容决定，文字不换行。
+   空间不够时由 `topbar-fit.js` 按优先级把按钮收进「更多」菜单，
+   而不是把每个按钮压窄 —— 被压窄的按钮文字会折成两行，
+   34px 高装不下，看起来像坏了。
+   只给一个下限：窄到连一个按钮都放不下时也不消失。 */
+.pill-btn {
+  flex: 0 0 auto;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 14px;
+  border-radius: 17px;
+  white-space: nowrap;
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1;
+  transition: color 140ms ease, background 140ms ease;
+}
+
+.pill-btn:hover {
+  color: var(--text-primary);
+  background: var(--surface-solid);
+}
+
+.pill-btn__dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--m-accent);
+  box-shadow: 0 0 0 1.5px var(--m-ocean);
+}
+
+/* 「更多」收纳：宽度放不下的按钮被移进这里，而不是被压扁。
+   结构与出现时机都由 topbar-fit.js 决定 —— 没有溢出时整块 display:none，
+   不占 10px 的 gap（否则窄窗口下永远差这 10px 放不下最后一个按钮）。 */
+.topbar__more {
+  position: relative;
+  flex: 0 0 auto;
+  display: none;
+}
+
+.topbar__more.is-shown {
+  display: block;
+}
+
+.topbar__more-btn {
+  padding: 0 12px;
+}
+
+.topbar__more-btn svg {
+  display: block;
+}
+
+/* 收纳菜单：纵向列出被收起来的按钮。
+   按钮是**同一个 DOM 元素**被搬过来的，不是复制品 —— 状态（aria-pressed、
+   dot 的颜色）、事件监听、脚本持有的引用全部照旧，收起再展开不会丢状态。
+   这也是它必须用 appendChild 搬移、而不是克隆一个「菜单版按钮」的原因。 */
+.topbar__menu {
+  position: absolute;
+  z-index: 45;
+  top: 42px;
+  right: 0;
+  display: none;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 132px;
+  padding: 8px;
+  border-radius: 12px;
+  background: var(--surface-solid);
+  box-shadow: var(--shadow-md), 0 0 0 1px var(--line);
+  backdrop-filter: blur(18px) saturate(150%);
+  -webkit-backdrop-filter: blur(18px) saturate(150%);
+}
+
+.topbar__more.is-open .topbar__menu {
+  display: flex;
+}
+
+/* 菜单里的按钮撑满一行、左对齐，读起来像一份列表而不是一列药丸 */
+.topbar__menu .pill-btn {
+  justify-content: flex-start;
+  width: 100%;
+  box-shadow: none;
+  background: transparent;
+}
+
+.topbar__menu .pill-btn:hover {
+  background: var(--surface-hover);
+}
+
+/* 换肤面板 */
+.themes {
+  position: absolute;
+  z-index: 40;
+  top: 58px;
+  right: 16px;
+  display: flex;
+  gap: 4px;
+  padding: 8px;
+  border-radius: 16px;
+  visibility: hidden;
+  opacity: 0;
+  background: var(--surface-solid);
+  box-shadow: var(--shadow-md);
+  pointer-events: none;
+  transform: translateY(-6px) scale(0.97);
+  transform-origin: 100% 0;
+  transition: opacity 160ms ease, transform 180ms cubic-bezier(0.32, 0.72, 0, 1), visibility 0s linear 180ms;
+}
+
+.themes.is-open {
+  visibility: visible;
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0) scale(1);
+  transition: opacity 160ms ease, transform 180ms cubic-bezier(0.32, 0.72, 0, 1), visibility 0s linear 0s;
+}
+
+.theme-chip {
+  width: 46px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 0;
+  border-radius: 10px;
+  transition: background 140ms ease;
+}
+
+.theme-chip:hover {
+  background: var(--surface-hover);
+}
+
+.theme-chip__swatch {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1px rgba(127, 127, 127, 0.35);
+}
+
+.theme-chip__name {
+  color: var(--text-tertiary);
+  font-size: 11px;
+  line-height: 1;
+}
+
+.theme-chip.is-active .theme-chip__name {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.theme-chip.is-active .theme-chip__swatch {
+  box-shadow: inset 0 0 0 1px rgba(127, 127, 127, 0.35), 0 0 0 2px var(--surface-solid),
+    0 0 0 3.5px var(--text-primary);
+}
+
+/* ---------------------------------------------------------------- 缩放控件 */
+.zoombar {
+  position: absolute;
+  z-index: 30;
+  /* 让位给面板，并额外留出面板左侧的 --panel-gap —— 否则缩放控件
+     会贴着悬浮卡片的圆角，看起来像被压住了一半 */
+  right: calc(16px + var(--panel-gap) + var(--panel-w));
+  bottom: 84px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  overflow: hidden;
+  border-radius: 11px;
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  transition: right 300ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.zoombar button {
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  transition: color 120ms ease, background 120ms ease;
+}
+
+.zoombar button:hover {
+  color: var(--m-accent);
+  background: var(--surface-hover);
+}
+
+.zoombar button[disabled] {
+  opacity: 0.3;
+  pointer-events: none;
+}
+
+.zoombar svg {
+  width: 14px;
+  height: 14px;
+  display: block;
+}
+
+.zoombar__scale {
+  width: 34px;
+  min-height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  color: var(--m-accent);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.15;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------------------------------------------------------------- 图例 */
+.legend {
+  position: absolute;
+  z-index: 30;
+  bottom: 20px;
+  left: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 15px;
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  pointer-events: none;
+}
+
+.legend__label {
+  color: var(--text-tertiary);
+  font-size: 11px;
+  line-height: 1;
+}
+
+.legend__ramp {
+  display: flex;
+  gap: 2px;
+}
+
+.legend__ramp i {
+  width: 14px;
+  height: 10px;
+  border-radius: 2px;
+}
+
+.legend__ramp i:nth-child(1) { background: var(--m-d1); }
+.legend__ramp i:nth-child(2) { background: var(--m-d2); }
+.legend__ramp i:nth-child(3) { background: var(--m-d3); }
+.legend__ramp i:nth-child(4) { background: var(--m-d4); }
+.legend__ramp i:nth-child(5) { background: var(--m-d5); }
+
+/* ---------------------------------------------------------------- 覆盖层标记 */
+/* .mk 只负责定位（每帧被 JS 写入 transform），视觉在子元素上，
+   这样 hover 的 scale 才不会和定位用的 transform 打架。 */
+.mk {
+  position: absolute;
+  top: 0;
+  left: 0;
+  will-change: transform;
+  pointer-events: none;
+}
+
+.mk > * {
+  pointer-events: auto;
+}
+
+/* 省名标注：字号固定，不随缩放变化 */
+.mk-label {
+  color: var(--m-label);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  user-select: none;
+  pointer-events: none;
+  paint-order: stroke;
+  -webkit-text-stroke: 2.5px var(--m-label-edge);
+}
+
+/* ---------------------------------------------------------------- 照片点位
+   缩略图在上、地名在下，整块是一个紧凑的竖排卡片。
+   所有尺寸都是屏幕像素，缩放时不变。 */
+.pin {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  transition: transform 150ms cubic-bezier(0.32, 0.72, 0, 1);
+  transform-origin: 50% 100%;
+}
+
+.pin__thumb {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  padding: 2.5px;
+  border-radius: 11px;
+  background: var(--surface-solid);
+  box-shadow: 0 4px 13px var(--m-pin-shadow), 0 0 0 1px var(--m-pin-ring);
+}
+
+.pin__thumb img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 8.5px;
+  object-fit: cover;
+  background: var(--m-land);
+}
+
+/* 缩略图下方的三角指针，指明位置 */
+.pin__thumb::after {
+  content: '';
+  position: absolute;
+  bottom: -3.5px;
+  left: 50%;
+  width: 7px;
+  height: 7px;
+  margin-left: -3.5px;
+  border-radius: 1.2px;
+  background: var(--surface-solid);
+  transform: rotate(45deg);
+  box-shadow: 1.5px 1.5px 3px rgba(0, 0, 0, 0.22);
+}
+
+.pin__name {
+  max-width: 140px;
+  padding: 2px 6px;
+  border-radius: 6px;
+  overflow: hidden;
+  color: var(--m-pin-name);
+  background: var(--m-pin-name-bg);
+  font-size: 11.5px;
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: 0;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* 放不下地名时的退化形态：只留缩略图与角标。
+   两行地名硬挤在一起会互相压成乱码，比不写更糟；位置永远是准的。
+   地名没有丢，hover 一下浮出来，点开面板也看得到。 */
+.pin.is-noname .pin__name {
+  display: none;
+}
+
+.pin.is-noname:hover .pin__name {
+  display: block;
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 6;
+  pointer-events: none;
+}
+
+.pin__count {
+  position: absolute;
+  top: -6px;
+  right: -7px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  color: var(--m-accent-ink);
+  background: var(--m-accent);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4), 0 0 0 1.5px var(--surface-solid);
+}
+
+/* hover 放大只在 .pin 内层。**置顶不在这里**：.mk 带 will-change:transform、
+   各自是独立的层叠上下文，这里的 z-index 抬不过兄弟标注 —— 置顶由 JS 把
+   zIndex 写到 .mk 本身（tdt-map.js 的 pointerenter / pointerleave）。 */
+.pin.is-hover {
+  transform: scale(1.1);
+}
+
+/* 当前在右侧面板里展开的那个点位：缩略图套一圈强调色，
+   地名也换成强调色，让「面板里是谁」一目了然。 */
+.pin.is-active .pin__thumb {
+  box-shadow: 0 0 0 2px var(--m-accent), 0 4px 14px var(--m-pin-shadow);
+}
+
+.pin.is-active .pin__name {
+  color: var(--m-accent);
+}
+
+/* ---------------------------------------------------------------- 右侧地点面板 */
+/* 浮在地图之上的卡片：四边留 --panel-gap、圆角、四周投影、半透明毛玻璃。
+   地图始终铺满整个舞台（.stage 是 inset:0），面板不挤压它 —— 所以要
+   主动平移相机把被点的位置带出来，见 tdt-map.js 的 revealPoint()。
+   宽度绑 --panel-w：收起时 0，展开时 348。宽度用 0s 过渡但延迟到
+   transform 滑完再变 —— 否则关闭的一瞬间内容就被压没了，什么也滑不出去。
+   圆角 9px：UI 稿左上角轮廓做亚像素边界拟合法（覆盖率 50% 交点 + 最小二乘），
+   最优 r=9.00、RMSE 0.18px；r=8 与 r=10 的 RMSE 分别涨到 0.52 / 0.45。
+   底色换成**不透明的 --surface-solid**，并去掉毛玻璃 —— 理由在 UI 稿里：
+   卡内量到的是纯白 255，而它背后那块内容区是 210；半透明白（--surface
+   那档 0.88）只会得到 250。稿子画的是一块实心卡。
+   而且头图那条白渐变必须以「与面板本体完全同色」收尾，半透明底做不到
+   无缝（渐变背后是照片、面板背后是地图，两者底色不同，一定会留一道台阶）。 */
+.panel {
+  position: absolute;
+  z-index: 35;
+  top: var(--panel-gap);
+  right: var(--panel-gap);
+  bottom: var(--panel-gap);
+  width: var(--panel-w);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 9px;
+  background: var(--surface-solid);
+  /* 收起时整块滑出右边缘。位移要多算两倍 gap：面板本来就离边 12px，
+     只移 100% 的话右边会留下一条 12px 的窄边贴在屏幕上。 */
+  transform: translate3d(calc(100% + var(--panel-gap) * 2), 0, 0);
+  transition: transform 300ms cubic-bezier(0.32, 0.72, 0, 1), width 0s linear 300ms;
+  will-change: transform;
+}
+
+/* 阴影与描边只在展开时出现：收起后宽度为 0，若还在，
+   地图右边缘会残留一圈谁也说不清来历的暗边 */
+.panel.is-open {
+  box-shadow: var(--panel-shadow), 0 0 0 1px var(--line);
+  transform: translate3d(0, 0, 0);
+  transition: transform 300ms cubic-bezier(0.32, 0.72, 0, 1), width 0s linear;
+}
+
+/* ---- 头图：面板的第一屏就是一张封面照片 ----------------------------------
+   三层叠在一起，自下而上是：封面图 → 模糊带 → 白色渐变，标题压在最上面。
+
+   ① 封面图（.panel__hero-img）：object-fit: cover 铺满，圆角由父级裁。
+      高度固定 331px —— 面板宽 348，也就是接近正方形的一屏。
+  ② 模糊带（.panel__hero-blur）：只盖住**下 1/3**，高斯模糊。
+      用 backdrop-filter 而不是给图片套 filter: blur()：后者会把叠在它上面
+      的渐变、以及渐变里的文字一起糊掉。backdrop-filter 糊的是「它背后已经
+      画好的东西」，正好就是那张图。
+      上缘必须用 mask 羽化 —— 模糊如果「突然开始」，图上会横着一条笔直的
+      起止线，比不模糊还显眼。
+  ③ 白色渐变（.panel__hero-fade）：从 42% 处开始渐白，86% 全白。
+      末端取 --hero-fade（面板底色的不透明版），于是它一路白到与面板本体
+      完全同色。标题因此能压在渐变的尾巴上（墨迹落在 81%~86% 高度），
+      而不是掉在图外另起一块。
+
+   三个数值的出处（UI 稿 1120×700，卡顶 y=104.5，以下全部是「相对卡顶」的偏移）：
+     hero 高 331、标题区下内边距 16 → 标题墨迹落在 +269（稿 +269.5）；
+     下 1/3 模糊起于 +221（稿里模糊也是 +218.5 开始显形）；
+     白渐变在 +279.5 收满（稿 +279.5）；缩略图起于 +422（稿 +422.5）。 */
+.panel__hero {
+  position: relative;
+  flex: 0 0 auto;
+  height: 331px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  /* 左右 16px 与下面每一块同一条竖线（UI 稿：标题墨迹左界 767 - 卡左 750.5 = 16.5）；
+     下 14.5px 让标题墨顶落在 +269.5、墨底 +285.5，与稿逐像素对齐。
+     它不是估的：文本块是底对齐的，所以
+       place.t = hero.b − Pb − adm 盒高 16.8 − adm 外边距 11 − place 行盒 21.6，
+     把稿里的两条墨带（+269.5、+301.5）各自减去实测的墨内偏移
+     （标题 2.4px、副标题 1.8px）就得到唯一的 (Pb, 外边距) 解 = (14.5, 11)。 */
+  padding: 0 16px 14.5px;
+  overflow: hidden;
+  background: var(--m-land);
+}
+
+.panel__hero-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+.panel__hero-blur {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 34%;
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  /* 羽化上缘，避免模糊带出现一条硬边 */
+  -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 42%);
+  mask-image: linear-gradient(180deg, transparent 0, #000 42%);
+}
+
+.panel__hero-fade {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(var(--hero-fade), 0) 42%,
+    rgba(var(--hero-fade), 0.72) 68%,
+    rgba(var(--hero-fade), 1) 86%
+  );
+}
+
+.panel__hero-text {
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+}
+
+/* 标题。曾经在它上面还有一行 accent 色眉标（「56 处地点」），
+   但那条信息与下面数据条里的「56 / 地点」完全重复，属视觉噪声 ——
+   已移除。
+   字号 18px：UI 稿里「背景-故宫」的墨迹宽 81px，浏览器实测
+   18px/600（含 -0.01em 字距）给出 81.2px，20px 会给到 91px。 */
+.panel__place {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+
+/* 地点行：只列标题之外的地点。整行放不下就省略 —— 允许折行会顶掉下面
+   数据条的位置，而「一共几处」已经由数据条交代了。
+   上边距 11px：稿里标题墨底 +285.5 → 副标题墨顶 +301.5，间距 16px；
+   扣掉标题行盒的下半余量（21.6 − 2.4 − 17 ≈ 2.2）与副标题行盒的墨内偏移 1.8，
+   得 16 − 2.2 − 1.8 ≈ 12，实测收敛在 11px（首轮 10px 让副标题高了 1.5px）。 */
+.panel__adm {
+  margin: 11px 0 0;
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.4;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* 同级地点之间的斜线分隔符。
+   它必须比地名更轻：地名已经是正文里最浅的一档（--text-secondary），
+   分隔符与地名同色就会被读成正文的一部分，那正是它要修掉的问题。
+   取再浅一档（--text-tertiary）并压一点不透明度 —— 两个主题下都比正文轻，
+   且沿用主题变量，不写死颜色，换肤时不会漏掉这一处。
+   左右留白比原来的「 · 」略大：斜线本身比中点窄，留白不够会贴字。 */
+.panel__adm-sep {
+  margin: 0 5px;
+  color: var(--text-tertiary);
+  opacity: 0.8;
+}
+
+/* 没有副标题时不占位（单点面板的实验线就是空的）——
+   空元素的高度是 0，上面那 10px 外边距却不是。 */
+.panel__adm:empty {
+  display: none;
+}
+
+/* 数据条：三项短值并排，值在上、标签在下，整体左对齐、按内容宽度紧密排列。
+   原先是三等分（grid 1fr）+ 格间竖线，改成「内容宽 + 固定间距」两条理由：
+     ① UI 稿量出的三列左界是 768 / 832 / 896 —— 节距恒为 64px，而不是
+        (348-32)/3 ≈ 105px；三等分会让三组数字之间出现大片空白；
+     ② 稿里没有竖分隔线（格子之间是纯白），加线反而把一项数据切成三块。
+   gap 42px = 节距 64 − 标签宽 22（「照片」两字 @11px）。
+   上下内边距 0 / 10px，值标签之间另有 5.5px（见 .panel__stat 的 gap）。
+   这组数是量出来的，不是估的：稿里统计值墨带 +333.5~346.5、标签墨带
+   +359.5~368.5（相对卡顶），两者墨距 13px；首轮实现落在 +338~350 / +357~366，
+   值偏低 4.5px、标签偏高 2.5px，墨距只剩 7px —— 差的这 6px 是「值与标签
+   之间没有空隙」。所以 padding-top 由 3px 收回 0（值上移）、给标签加 5.5px
+   （标签下移），padding-bottom 再由 12px 收到 10px 让整块总高基本不变（+0.5px），
+   底下的脚注与缩略图才不会被带偏。 */
+.panel__stats {
+  display: flex;
+  gap: 42px;
+  padding: 0 16px 10px;
+}
+
+/* 值与标签各自居中叠放：UI 稿里「12」的中心与「照片」的中心重合
+   （12 的墨迹 770~788 落在标签 768~789 的正中），而不是左对齐。
+   gap 5.5px 同样是量出来的：稿里两组墨迹相距 13px，实现里
+   17px × 1.3 的行盒把值压得离标签太近（只剩 7px）。 */
+.panel__stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5.5px;
+  min-width: 0;
+}
+
+/* 字号 17px：UI 稿里「12」的墨迹宽 19px，浏览器实测 17px/600 给到 19.2px。 */
+.panel__stat-v {
+  color: var(--text-primary);
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.3;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 字号 11px：UI 稿里「照片」的墨迹宽 22px —— 汉字一个字进 1em，
+   与字体无关，所以这一条是全部字号推断里最硬的一个锚点。 */
+.panel__stat-k {
+  overflow: hidden;
+  color: var(--text-tertiary);
+  font-size: 11px;
+  line-height: 1.2;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* 脚注：左坐标、右日期区间，一行两端对齐（UI 稿里坐标墨迹止于 899、
+   日期墨迹起于 944，正是 space-between 撑满整条的样子）。
+   它们要能核对得到，但不该和上面的数字抢注意力，所以颜色最淡。
+   字号 12px：UI 稿里坐标墨宽 132px、日期墨宽 135px，浏览器实测
+   12px 分别给到 131px / 141px（本地回退字体比稿里的苹方宽一点）。
+   **没有下边框** —— UI 稿里脚注与缩略图之间是纯白，那条分隔线已删。
+   上下内边距 5px / 6px（首轮是 0 / 13px）—— 这一进一出是刻意的：
+     脚注墨带在稿里落在 +389.5~399.5（相对卡顶），首轮实现是 +385~394，
+     整段高了 4.5px（撑开它的是上面 stats 的 padding-bottom 12px），
+     所以给 padding-top 5px 把墨顶压回 +390；
+     同时 padding-bottom 由 13px 收到 6px，让脚注**总高**由 30.4 缩到 28.4，
+     缩略图首格顶因此从 +424.7 提到 +422.7（稿 +422.5）。
+     若只加 padding-top 不收 padding-bottom，缩略图会跟着一起下沉 5px。
+     两处必须同时改 —— 脚注的「墨在哪」和「占多高」是两件事。 */
+.panel__foot {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 2px 12px;
+  margin: 0;
+  padding: 5px 16px 6px;
+  color: var(--text-tertiary);
+  font-size: 12px;
+  line-height: 1.45;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 照片网格：三列方形。图片下方不再挂任何文字 —— 地点与日期改由
+   hover 气泡（.shot-tip）承担，格子因此能压到纯图片大小。
+   左右内边距 16px 与标题、数据条、脚注同一条竖线（UI 稿：缩略图左界 767
+   - 卡左 751 = 16；旧版是 12，会让缩略图比标题更靠左）。
+   348px 的面板去掉左右内边距与 8px 列间距，每列约 99px，1:1 即 99×99 ——
+   与 UI 稿量到的 99~100px 一致。 */
+.panel__list {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-content: start;
+  gap: 8px;
+  margin: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 12px 16px 16px;
+  list-style: none;
+}
+
+.panel__list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.panel__list::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 8px;
+  background: var(--line);
+  background-clip: content-box;
+}
+
+.panel__list::-webkit-scrollbar-thumb:hover {
+  background: var(--text-tertiary);
+  background-clip: content-box;
+}
+
+/* 单张照片：一个方图，没有别的东西。
+
+   hover 反馈只能落在图片自己身上 —— 没有文字区可以变色了，所以用
+   `outline` 描边（负 offset 内缩，不占布局、不会推动相邻格子）。
+   透明描边常驻是为了让 transition 有一个起点，避免 hover 瞬间从
+   「无描边」跳到「有描边」时颜色硬切。 */
+   圆角 5px：UI 稿缩略图左上角同样做亚像素拟合，最优 r=5.00、RMSE 0.10px
+   （r=4 与 r=6 分别涨到 0.42 / 0.44）。 */
+.shot {
+  display: block;
+  border-radius: 5px;
+}
+
+.shot__img {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1 / 1;
+  display: block;
+  object-fit: cover;
+  border-radius: 5px;
+  background: var(--m-land);
+  outline: 2px solid transparent;
+  outline-offset: -2px;
+  transition: outline-color 140ms ease;
+}
+
+.shot:hover .shot__img {
+  outline-color: var(--m-accent);
+}
+
+/* 照片信息气泡：第一行地点、第二行日期。
+
+   为什么挂在 .panel 上而不是 .panel__list 里：列表是 `overflow-y: auto`
+   的滚动容器，气泡放进去会被裁在格子内。位置由 JS 写 transform ——
+   与 .fill-tip 同一套路，位移只走合成层，不触发布局。 */
+.shot-tip {
+  position: absolute;
+  z-index: 6;
+  left: 0;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 10px 7px;
+  border-radius: 9px;
+  color: var(--text-primary);
+  background: var(--surface-solid);
+  box-shadow: var(--shadow-sm), 0 0 0 1px var(--line);
+  font-size: 11.5px;
+  line-height: 1.35;
+  white-space: nowrap;
+  pointer-events: none;
+  user-select: none;
+  opacity: 0;
+  transition: opacity 110ms ease;
+  will-change: transform;
+}
+
+.shot-tip.is-on {
+  opacity: 1;
+}
+
+.shot-tip__place {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.shot-tip__date {
+  color: var(--text-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* 两道信息都可能缺（没有日期 / 没有地名），缺了就不占行高 */
+.shot-tip__place[hidden],
+.shot-tip__date[hidden] {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shot__img,
+  .shot-tip {
+    transition: none;
+  }
+}
+
+/* ---------------------------------------------------------------- 载入态 */
+.loading {
+  position: absolute;
+  z-index: 50;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background: var(--scrim);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  opacity: 0;
+  pointer-events: none;
+  /* visibility 兜底：淡出结束后彻底移出渲染，
+     否则截图/打印/录屏时可能捕捉到一层半透明的残影 */
+  visibility: hidden;
+  transition: opacity 200ms ease, visibility 0s linear 200ms;
+}
+
+.loading.is-on {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 200ms ease, visibility 0s;
+}
+
+.loading__ring {
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--line);
+  border-top-color: var(--m-accent);
+  border-radius: 50%;
+  animation: pm-spin 0.7s linear infinite;
+}
+
+@keyframes pm-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.loading__text {
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1;
+}
+
+/* 出错时的第二行明细：绝对地址、文档根、该怎么办。
+   pre-line 是为了让文案里的 \n 真的换行；URL 很长，用 break-all 断。 */
+.loading__hint {
+  max-width: 76%;
+  color: var(--text-tertiary);
+  font-size: 11px;
+  line-height: 1.7;
+  text-align: center;
+  white-space: pre-line;
+  word-break: break-all;
+}
+
+.loading__hint[hidden] {
+  display: none;
+}
+
+/* 非阻断提示：只在出问题时出现，绝不会把整页挡住 */
+.toast {
+  position: absolute;
+  z-index: 45;
+  left: 50%;
+  bottom: 76px;
+  max-width: 76%;
+  padding: 8px 14px;
+  border-radius: 10px;
+  color: var(--text-secondary);
+  background: var(--surface-solid);
+  box-shadow: var(--shadow-md);
+  font-size: 11.5px;
+  line-height: 1.4;
+  text-align: center;
+  visibility: hidden;
+  opacity: 0;
+  transform: translate(-50%, 6px);
+  transition: opacity 180ms ease, transform 200ms cubic-bezier(0.32, 0.72, 0, 1), visibility 0s linear 180ms;
+}
+
+.toast.is-on {
+  visibility: visible;
+  opacity: 1;
+  transform: translate(-50%, 0);
+  transition: opacity 180ms ease, transform 200ms cubic-bezier(0.32, 0.72, 0, 1), visibility 0s linear 0s;
+}
+
+@media (max-width: 520px) {
+  .brand__meta {
+    display: none;
+  }
+
+  .zoombar {
+    bottom: 74px;
+  }
+
+  /* 窄屏：面板几乎铺满，左右各留一个 gap，让用户看得出地图还在后面。
+     这里把顶栏与缩放控件的避让关掉：屏幕本来就放不下「地图 + 面板」，
+     硬要避让只会把顶栏挤成几十像素宽、按钮全叠在一起。
+     面板打开时它们被盖住，关掉面板（--panel-w 归 0）就恢复原样。 */
+  .app.is-panel {
+    --panel-w: calc(100% - var(--panel-gap) * 2);
+  }
+
+  .topbar,
+  .zoombar {
+    right: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel,
+  .topbar,
+  .zoombar,
+  .themes,
+  .toast,
+  .pin {
+    transition-duration: 1ms;
+  }
+}
